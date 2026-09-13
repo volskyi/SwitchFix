@@ -5,7 +5,7 @@ import Core
 import Utils
 
 public class StatusBarController: NSObject, NSMenuDelegate {
-    private let statusItem: NSStatusItem
+    private var statusItem: NSStatusItem
     private let menu: NSMenu
     private var enableMenuItem: NSMenuItem!
     private var appFilterMenuItem: NSMenuItem!
@@ -32,8 +32,71 @@ public class StatusBarController: NSObject, NSMenuDelegate {
         setupMenu()
 
         statusItem.menu = menu
+        statusItem.isVisible = true
 
         startTrackingInputSource()
+        schedulePlacementCheck(attempt: 1)
+    }
+
+    /// Verify the item actually got a slot in the menu bar, and retry if not.
+    ///
+    /// On macOS 26 the menu bar is hosted out-of-process by Control Center, and
+    /// an item can come back with its window parked off-screen at y = -22 — it
+    /// exists, it is "visible", and nothing is drawn. Recreating the item asks
+    /// for a slot again, which usually succeeds on a later attempt.
+    private func schedulePlacementCheck(attempt: Int) {
+        let maxAttempts = 5
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            guard let self else { return }
+            self.logStatusItemDiagnostics()
+
+            guard !self.isStatusItemPlaced() else {
+                SwitchFixLog.app.notice("status item: placed in the menu bar (attempt \(attempt))")
+                return
+            }
+            guard attempt < maxAttempts else {
+                SwitchFixLog.app.error("status item: no menu bar slot after \(maxAttempts) attempts")
+                return
+            }
+
+            SwitchFixLog.app.notice("status item: no slot yet, recreating (attempt \(attempt + 1))")
+            self.recreateStatusItem()
+            self.schedulePlacementCheck(attempt: attempt + 1)
+        }
+    }
+
+    /// A placed item has a backing window inside the screen; a parked one sits at y < 0.
+    private func isStatusItemPlaced() -> Bool {
+        guard let window = statusItem.button?.window else { return false }
+        return window.frame.origin.y >= 0 && window.frame.width > 0
+    }
+
+    private func recreateStatusItem() {
+        NSStatusBar.system.removeStatusItem(statusItem)
+        renderedSourceID = nil
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        setupIcon()
+        statusItem.menu = menu
+        statusItem.isVisible = true
+    }
+
+    private func logStatusItemDiagnostics() {
+        let log = SwitchFixLog.app
+        log.notice("status item: visible=\(statusItem.isVisible) length=\(statusItem.length)")
+        if let button = statusItem.button {
+            log.notice("status item: button frame=\(NSStringFromRect(button.frame)) image=\(button.image?.size ?? .zero) title='\(button.title)'")
+            if let window = button.window {
+                log.notice("status item: window number=\(window.windowNumber) frame=\(NSStringFromRect(window.frame)) visible=\(window.isVisible)")
+            } else {
+                log.notice("status item: button has no window")
+            }
+        } else {
+            log.notice("status item: button is nil")
+        }
+        let resource = currentFlagDescriptor().resource
+        let mainURL = Bundle.main.url(forResource: resource, withExtension: "png")
+        let moduleURL = Bundle.module.url(forResource: resource, withExtension: "png")
+        log.notice("status item: flag '\(resource)' main=\(mainURL != nil) module=\(moduleURL != nil)")
     }
 
     private func setupIcon() {

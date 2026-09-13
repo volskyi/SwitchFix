@@ -84,12 +84,12 @@ SwitchFix stores hotkeys in `UserDefaults`. Customize via Terminal:
 
 ```bash
 # Revert hotkey: CapsLock (no modifiers)
-defaults write com.switchfix.app SwitchFix_revertHotkeyKeyCode -int 57
-defaults write com.switchfix.app SwitchFix_revertHotkeyModifiers -int 0
+defaults write ua.volskyi.switchfix SwitchFix_revertHotkeyKeyCode -int 57
+defaults write ua.volskyi.switchfix SwitchFix_revertHotkeyModifiers -int 0
 
 # Correction hotkey: Ctrl+Shift+Space
-defaults write com.switchfix.app SwitchFix_hotkeyKeyCode -int 49
-defaults write com.switchfix.app SwitchFix_hotkeyModifiers -int $((262144+131072))
+defaults write ua.volskyi.switchfix SwitchFix_hotkeyKeyCode -int 49
+defaults write ua.volskyi.switchfix SwitchFix_hotkeyModifiers -int $((262144+131072))
 ```
 
 ## How It Works
@@ -113,6 +113,13 @@ Relative to upstream v0.0.9:
 - **Status item on macOS 26** — created shortly after launch rather than during
   it. The menu bar is managed out-of-process there, and an item created too
   early can end up without a slot and never appear.
+- **Own bundle identifier** (`ua.volskyi.switchfix`). On macOS 26 the menu bar
+  is hosted out-of-process by Control Center, and it refuses a slot to
+  `com.switchfix.app` on at least one machine: the status item is created and
+  reports itself visible, but its window stays parked off-screen at y = -22, so
+  nothing is drawn. The same binary under a different identifier gets a slot on
+  the first try. Restarting Control Center does not clear it and no preference
+  file records it, so the identifier is the only lever.
 - **Revert hotkey defaults to Ctrl+Shift+Z** — macOS binds CapsLock to
   input-source switching whenever a Cyrillic layout is installed, so the old
   default switched the layout instead of reverting. CapsLock is still

@@ -86,8 +86,8 @@ if [ "$NEEDS_PERMISSION_SETUP" = true ]; then
     echo ""
 
     # Reset stale TCC cache for SwitchFix to avoid stale signature mismatches
-    tccutil reset Accessibility com.switchfix.app >/dev/null 2>&1 || true
-    tccutil reset ListenEvent com.switchfix.app >/dev/null 2>&1 || true
+    tccutil reset Accessibility ua.volskyi.switchfix >/dev/null 2>&1 || true
+    tccutil reset ListenEvent ua.volskyi.switchfix >/dev/null 2>&1 || true
 
     # Open Accessibility settings & Finder
     open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility" || true

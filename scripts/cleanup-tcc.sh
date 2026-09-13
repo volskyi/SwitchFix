@@ -4,12 +4,12 @@ set -euo pipefail
 # Keep SwitchFix's own LaunchServices registration consistent.
 #
 # When both dist/SwitchFix.app (a local build) and /Applications/SwitchFix.app
-# exist, LaunchServices may resolve com.switchfix.app to the dist copy, which
+# exist, LaunchServices may resolve ua.volskyi.switchfix to the dist copy, which
 # confuses TCC and can crash Apple's SecurityPrivacyExtension when the
 # Privacy & Security pane loads. This script unregisters the dist copy so
 # only the installed app remains registered.
 #
-# Only com.switchfix.app is touched. We deliberately do NOT reset TCC entries
+# Only ua.volskyi.switchfix is touched. We deliberately do NOT reset TCC entries
 # for other applications: `tccutil reset` would revoke live permissions for
 # apps that are still installed, and macOS cleans up orphaned TCC records for
 # apps you uninstalled automatically (or they remain inert).

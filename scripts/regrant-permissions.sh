@@ -15,7 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 APP_BUNDLE="${1:-$PROJECT_DIR/dist/SwitchFix.app}"
-BUNDLE_ID="${2:-com.switchfix.app}"
+BUNDLE_ID="${2:-ua.volskyi.switchfix}"
 IDENTITY_FILE="$PROJECT_DIR/.codesign-identity"
 
 # ── Suggest the proper fix ───────────────────────────────────────────────────

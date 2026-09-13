@@ -9,7 +9,7 @@
     <key>CFBundleExecutable</key>
     <string>SwitchFixApp</string>
     <key>CFBundleIdentifier</key>
-    <string>com.switchfix.app</string>
+    <string>ua.volskyi.switchfix</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon.icns</string>
     <key>CFBundleInfoDictionaryVersion</key>
