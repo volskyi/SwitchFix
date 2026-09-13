@@ -112,6 +112,15 @@ if [ -d "$PRODUCTS_DIR/SwitchFix_Dictionary.bundle" ]; then
     echo "Copied compiled dictionary binaries and removed text fallbacks."
 fi
 
+# Copy flag images to Contents/Resources/ (StatusBarController loads them from Bundle.main).
+for flag in ukraine-flag-icon united-states-flag-icon russia-flag-icon spain-country-flag-icon; do
+    src="$PRODUCTS_DIR/SwitchFix_UI.bundle/${flag}.png"
+    if [ -f "$src" ]; then
+        cp "$src" "$APP_BUNDLE/Contents/Resources/${flag}.png"
+    fi
+done
+echo "Copied flag images to Contents/Resources/."
+
 # Code sign
 # Prefer a stable signing identity so macOS TCC permissions (Accessibility,
 # Input Monitoring) survive across rebuilds. Resolution order:

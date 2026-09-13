@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import ServiceManagement
 import Core
 import Utils
@@ -14,6 +15,10 @@ public class StatusBarController: NSObject, NSMenuDelegate {
     private var permissionMenuItems: [NSMenuItem] = []
     private var permissionSeparatorItem: NSMenuItem?
 
+    /// Input source ID the menu bar flag was last drawn for.
+    private var renderedSourceID: String?
+    private var layoutPollTimer: Timer?
+
     public override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         menu = NSMenu()
@@ -27,29 +32,100 @@ public class StatusBarController: NSObject, NSMenuDelegate {
         setupMenu()
 
         statusItem.menu = menu
+
+        startTrackingInputSource()
     }
 
     private func setupIcon() {
         guard let button = statusItem.button else { return }
+        button.toolTip = "SwitchFix"
+        refreshFlagIcon(force: true)
+    }
 
-        // Create a template image with "Ab" text for menu bar
-        let image = NSImage(size: NSSize(width: 22, height: 22), flipped: false) { rect in
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: NSColor.black
-            ]
-            let str = NSAttributedString(string: "Ab", attributes: attrs)
-            let strSize = str.size()
-            let origin = NSPoint(
-                x: (rect.width - strSize.width) / 2,
-                y: (rect.height - strSize.height) / 2
-            )
-            str.draw(at: origin)
+    /// Flag resource name and short fallback title for the active input source.
+    /// Spanish is not a correction layout, but the flag should still reflect it.
+    private func currentFlagDescriptor() -> (resource: String, fallbackTitle: String) {
+        let sourceID = InputSourceManager.shared.currentInputSourceID().lowercased()
+        if sourceID.contains("spanish") {
+            return ("spain-country-flag-icon", "ES")
+        }
+        switch InputSourceManager.shared.currentLayout() {
+        case .english:   return ("united-states-flag-icon", "EN")
+        case .ukrainian: return ("ukraine-flag-icon", "UK")
+        case .russian:   return ("russia-flag-icon", "RU")
+        }
+    }
+
+    private func flagImage(named name: String) -> NSImage? {
+        // Packaged app: Contents/Resources/<name>.png (Bundle.main)
+        // Development build: SPM resource bundle (Bundle.module)
+        let url = Bundle.main.url(forResource: name, withExtension: "png")
+               ?? Bundle.module.url(forResource: name, withExtension: "png")
+        guard let url, let source = NSImage(contentsOf: url) else { return nil }
+
+        // Draw into a new image at menu-bar size, preserving aspect ratio.
+        let barHeight = NSStatusBar.system.thickness
+        let iconH = barHeight * 0.7
+        let iconW = iconH * source.size.width / max(source.size.height, 1)
+        return NSImage(size: NSSize(width: iconW, height: iconH), flipped: false) { rect in
+            source.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1.0)
             return true
         }
-        image.isTemplate = true
-        button.image = image
-        button.toolTip = "SwitchFix"
+    }
+
+    /// Keep the menu bar flag in step with the real input source.
+    ///
+    /// The `kTISNotifySelectedKeyboardInputSourceChanged` notification alone is not
+    /// enough: it can arrive before `TISCopyCurrentKeyboardInputSource()` reports the
+    /// new source, which leaves the flag one layout behind — the menu bar showing EN
+    /// while macOS's own indicator near the cursor shows UK. Re-read after the
+    /// notification with short delays, and poll as a backstop for missed ones.
+    private func startTrackingInputSource() {
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(inputSourceChanged),
+            name: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String),
+            object: nil
+        )
+
+        let timer = Timer(timeInterval: 0.4, repeats: true) { [weak self] _ in
+            self?.refreshFlagIcon(force: false)
+        }
+        // .common so it keeps firing while a menu is open.
+        RunLoop.main.add(timer, forMode: .common)
+        layoutPollTimer = timer
+    }
+
+    @objc private func inputSourceChanged() {
+        for delay in [0.0, 0.05, 0.15, 0.3] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.refreshFlagIcon(force: false)
+            }
+        }
+    }
+
+    private func refreshFlagIcon(force: Bool) {
+        guard let button = statusItem.button else { return }
+        let sourceID = InputSourceManager.shared.currentInputSourceID()
+        let isEnabled = PreferencesManager.shared.isEnabled
+
+        guard force || sourceID != renderedSourceID || button.appearsDisabled == isEnabled else { return }
+        renderedSourceID = sourceID
+
+        let (resource, fallbackTitle) = currentFlagDescriptor()
+        if let flag = flagImage(named: resource) {
+            button.image = flag
+            button.title = ""
+        } else {
+            button.image = nil
+            button.title = fallbackTitle
+        }
+        button.appearsDisabled = !isEnabled
+    }
+
+    deinit {
+        layoutPollTimer?.invalidate()
+        DistributedNotificationCenter.default().removeObserver(self)
     }
 
     private func setupMenu() {
@@ -186,9 +262,12 @@ public class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcon() {
-        guard let button = statusItem.button else { return }
-        let isEnabled = PreferencesManager.shared.isEnabled
-        button.appearsDisabled = !isEnabled
+        refreshFlagIcon(force: true)
+    }
+
+    /// Redraw the flag from outside (e.g. after a programmatic layout switch).
+    public func updateFlagIcon() {
+        refreshFlagIcon(force: true)
     }
 
     @objc private func toggleCurrentAppFilter(_ sender: NSMenuItem) {

@@ -436,7 +436,7 @@ struct SettingsView: View {
                     }
                 }
                 
-                Text("Recommended: Set 'Revert Last' to Caps Lock to avoid conflicts.")
+                Text("Avoid Caps Lock for 'Revert Last': macOS binds it to input-source switching when a Cyrillic layout is installed.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }

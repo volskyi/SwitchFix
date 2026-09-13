@@ -96,11 +96,15 @@ public class PreferencesManager {
         }
     }
 
-    /// Revert-hotkey virtual key code (default: CapsLock = 57)
+    /// Revert-hotkey virtual key code (default: Z = 6, i.e. Ctrl+Shift+Z).
+    ///
+    /// CapsLock used to be the default, but on a Mac with a Cyrillic input source
+    /// macOS itself binds CapsLock to input-source switching, and it toggles caps
+    /// either way — so pressing it switched the layout instead of reverting.
     public var revertHotkeyKeyCode: UInt16 {
         get {
             // Key code 0 is the letter "A"; only fall back when the key is truly unset.
-            guard let val = defaults.object(forKey: Keys.revertHotkeyKeyCode) as? Int else { return 57 }
+            guard let val = defaults.object(forKey: Keys.revertHotkeyKeyCode) as? Int else { return 6 }
             return UInt16(truncatingIfNeeded: val)
         }
         set {
@@ -110,11 +114,13 @@ public class PreferencesManager {
         }
     }
 
-    /// Revert-hotkey modifier flags as raw UInt64 (default: none)
+    /// Revert-hotkey modifier flags as raw UInt64 (default: Ctrl+Shift)
     public var revertHotkeyModifiers: UInt64 {
         get {
-            let val = defaults.object(forKey: Keys.revertHotkeyModifiers) as? UInt64
-            return val ?? 0
+            guard let val = defaults.object(forKey: Keys.revertHotkeyModifiers) as? UInt64 else {
+                return CGEventFlags.maskControl.rawValue | CGEventFlags.maskShift.rawValue
+            }
+            return val
         }
         set {
             guard newValue != self.revertHotkeyModifiers else { return }

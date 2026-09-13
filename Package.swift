@@ -32,7 +32,13 @@ let package = Package(
         .target(
             name: "UI",
             dependencies: ["Core", "Utils"],
-            path: "Sources/UI"
+            path: "Sources/UI",
+            resources: [
+                .copy("Resources/ukraine-flag-icon.png"),
+                .copy("Resources/united-states-flag-icon.png"),
+                .copy("Resources/russia-flag-icon.png"),
+                .copy("Resources/spain-country-flag-icon.png")
+            ]
         ),
         .target(
             name: "Utils",

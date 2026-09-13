@@ -18,7 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         SwitchFixLog.app.notice("launched, pid=\(ProcessInfo.processInfo.processIdentifier)")
-        statusBarController = StatusBarController()
+        // Create the status item shortly after launch completes. On macOS 26 the
+        // menu bar is managed out-of-process (Control Center); creating the item
+        // synchronously during launch can leave it without a slot (window parked
+        // at (0,-22) with no window number) so it never appears in the menu bar.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.statusBarController = StatusBarController()
+        }
         inputSourceManager.refreshCurrentInputSource()
         previousLayout = inputSourceManager.currentLayout()
         previousInputSourceID = inputSourceManager.currentInputSourceID()
